@@ -3119,6 +3119,19 @@ typedef int (*ngtcp2_recv_datagram)(ngtcp2_conn *conn, uint32_t flags,
 /**
  * @functypedef
  *
+ * :type:`ngtcp2_recv_additional_address` is invoked when ADDITIONAL_ADDRESSES frame is
+ * received.
+ *
+ * The callback function must return 0 if it succeeds, or
+ * :macro:`NGTCP2_ERR_CALLBACK_FAILURE` which makes the library return
+ * immediately.
+ */
+typedef int (*ngtcp2_recv_additional_addresses)(ngtcp2_conn *conn, const ngtcp2_sockaddr *addrs,
+                                              size_t addrcnt, void *user_data);
+
+/**
+ * @functypedef
+ *
  * :type:`ngtcp2_ack_datagram` is invoked when a packet which contains
  * DATAGRAM frame which is identified by |dgram_id| is acknowledged.
  * |dgram_id| is the valued passed to `ngtcp2_conn_writev_datagram`.
@@ -3455,6 +3468,12 @@ typedef struct ngtcp2_callbacks {
    * This callback function is optional.
    */
   ngtcp2_lost_datagram lost_datagram;
+  /**
+   * :member:`recv_additional_addresses` is a callback function which is invoked
+   * when ADDITIONAL_ADDRESSES frame is received.  This callback function is
+   * optional.
+   */
+  ngtcp2_recv_additional_addresses recv_additional_addresses;
   /**
    * :member:`get_path_challenge_data` is a callback function which is
    * invoked when the library needs new data sent along with

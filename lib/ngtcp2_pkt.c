@@ -1468,9 +1468,12 @@ ngtcp2_ssize ngtcp2_pkt_decode_additional_addresses_frame(ngtcp2_additional_addr
                                                           size_t payloadlen) {
   size_t len = 1;
   const uint8_t *p;
-  size_t datalen;
-  size_t n;
+  size_t naddrcnt, addrcnt, max_addrcnt;
+  size_t n, i;
   uint64_t vi;
+  ngtcp2_sockaddr_in *in;
+  ngtcp2_sockaddr_in6 *in6;
+  uint8_t av, addrlen;
 
   if (payloadlen < len) {
     return NGTCP2_ERR_FRAME_ENCODING;
@@ -1486,34 +1489,82 @@ ngtcp2_ssize ngtcp2_pkt_decode_additional_addresses_frame(ngtcp2_additional_addr
 
   p += n;
 
-  n = ngtcp2_get_uvarintlen(p);
-  len += n - 1;
+  /* Additional Addresses Count */
+  naddrcnt = ngtcp2_get_uvarintlen(p);
+  len += naddrcnt - 1;
+
   if (payloadlen < len) {
     return NGTCP2_ERR_FRAME_ENCODING;
   }
+
+  p = ngtcp2_get_uvarint(&vi, p);
+  if (vi > SIZE_MAX / (1 + 4 + 2) || payloadlen - len < vi * (1 + 4 + 2)) {
+    return NGTCP2_ERR_FRAME_ENCODING;
+  }
+
+  addrcnt = (size_t)vi;
+
+  for (i = 0; i < addrcnt; ++i) {
+    ++len;
+    if (payloadlen < len) {
+      return NGTCP2_ERR_FRAME_ENCODING;
+    }
+
+    av = *p;
+    ++p;
+
+    switch (av) {
+    case 4:
+      addrlen = 4;
+      break;
+    case 6:
+      addrlen = 16;
+      break;
+    default:
+      return NGTCP2_ERR_FRAME_ENCODING;
+    }
+
+    /* IP Address and IP Port */
+    len += addrlen + 2;
+    p += addrlen + 2;
+  }
+
+  if (payloadlen < len) {
+    return NGTCP2_ERR_FRAME_ENCODING;
+  }
+
+  max_addrcnt = ngtcp2_min(NGTCP2_HARD_MAX_UDP_PAYLOAD_SIZE, addrcnt);
 
   p = payload + 1;
 
   dest->type = NGTCP2_FRAME_ADDITIONAL_ADDRESSES;
   p = ngtcp2_get_uvarint(&dest->seq, p);
-  p = ngtcp2_get_uvarint(&vi, p);
-  if (payloadlen - len < vi) {
-    return NGTCP2_ERR_FRAME_ENCODING;
-  }
+  dest->addrcnt = max_addrcnt;
+  p += naddrcnt;
+  for (i = 0; i < max_addrcnt; ++i) {
+    av = *p;
+    ++p;
 
-  datalen = (size_t)vi;
-  len += datalen;
-
-  if (datalen == 0) {
-    dest->datacnt = 0;
-    dest->data = NULL;
-  } else {
-    dest->datacnt = 1;
-    dest->data = dest->rdata;
-    dest->rdata[0].len = datalen;
-
-    dest->rdata[0].base = (uint8_t *)p;
-    p += datalen;
+    switch (av) {
+    case 4:
+      addrlen = 4;
+      in = (ngtcp2_sockaddr_in *)&dest->addrs[i];
+      in->sin_family = NGTCP2_AF_INET;
+      memcpy(&in->sin_addr, p, addrlen);
+      p += addrlen;
+      p = ngtcp2_get_uint16(&in->sin_port, p);
+      break;
+    case 6:
+      addrlen = 16;
+      in6 = (ngtcp2_sockaddr_in6 *)&dest->addrs[i];
+      in6->sin6_family = NGTCP2_AF_INET6;
+      memcpy(&in6->sin6_addr, p, addrlen);
+      p += addrlen;
+      p = ngtcp2_get_uint16(&in6->sin6_port, p);
+      break;
+    default:
+      return NGTCP2_ERR_FRAME_ENCODING;
+    }
   }
 
   assert((size_t)(p - payload) == len);
@@ -2114,14 +2165,17 @@ ngtcp2_ssize ngtcp2_pkt_encode_datagram_frame(uint8_t *out, size_t outlen,
 
 ngtcp2_ssize ngtcp2_pkt_encode_additional_addresses_frame(uint8_t *out, size_t outlen,
                                                           const ngtcp2_additional_addresses *fr) {
-  uint64_t datalen = ngtcp2_vec_len(fr->data, fr->datacnt);
   uint64_t len =
       1 +
       ngtcp2_put_uvarintlen(fr->seq) +
-      ngtcp2_put_uvarintlen(datalen) +
-      datalen;
+      ngtcp2_put_uvarintlen(fr->addrcnt);
   uint8_t *p;
+  void *a;
+  ngtcp2_sockaddr_in *in;
+  ngtcp2_sockaddr_in6 *in6;
   size_t i;
+  uint16_t port;
+  uint8_t addrlen, fam;
 
   if (outlen < len) {
     return NGTCP2_ERR_NOBUF;
@@ -2131,12 +2185,37 @@ ngtcp2_ssize ngtcp2_pkt_encode_additional_addresses_frame(uint8_t *out, size_t o
 
   *p++ = NGTCP2_FRAME_ADDITIONAL_ADDRESSES;
   p = ngtcp2_put_uvarint(p, fr->seq);
-  p = ngtcp2_put_uvarint(p, datalen);
+  p = ngtcp2_put_uvarint(p, fr->addrcnt);
 
-  for (i = 0; i < fr->datacnt; ++i) {
-    assert(fr->data[i].len);
-    assert(fr->data[i].base);
-    p = ngtcp2_cpymem(p, fr->data[i].base, fr->data[i].len);
+  for (i = 0; i < fr->addrcnt; ++i) {
+    switch(fr->addrs[i].sa_family) {
+    case AF_INET:
+      addrlen = 4;
+      fam = 4;
+      in = (ngtcp2_sockaddr_in *)&fr->addrs[i];
+      a = &in->sin_addr;
+      port = in->sin_port;
+      break;
+    case AF_INET6:
+      addrlen = 16;
+      fam = 6;
+      in6 = (ngtcp2_sockaddr_in6 *)&fr->addrs[i];
+      a = &in6->sin6_addr;
+      port = in6->sin6_port;
+      break;
+    default:
+      ngtcp2_unreachable();
+    }
+
+    len += 1 + addrlen + 2;
+    if (outlen < len) {
+      return NGTCP2_ERR_NOBUF;
+    }
+
+    *p++ = fam;
+    memcpy(a, p, addrlen);
+    p += addrlen;
+    p = ngtcp2_put_uint16(p, port);
   }
 
   assert((size_t)(p - out) == len);

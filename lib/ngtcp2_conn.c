@@ -596,6 +596,33 @@ static int conn_call_recv_datagram(ngtcp2_conn *conn,
   return 0;
 }
 
+static int conn_call_recv_additional_addresses(ngtcp2_conn *conn,
+                                               const ngtcp2_additional_addresses *fr) {
+  const ngtcp2_sockaddr *addrs;
+  size_t addrcnt;
+  int rv;
+
+  if (!conn->callbacks.recv_additional_addresses) {
+    return 0;
+  }
+
+  if (fr->addrcnt) {
+    addrs = fr->addrs;
+    addrcnt = fr->addrcnt;
+  } else {
+    addrs = NULL;
+    addrcnt = 0;
+  }
+
+  rv = conn->callbacks.recv_additional_addresses(conn, addrs, addrcnt,
+                                                 conn->user_data);
+  if (rv != 0) {
+    return NGTCP2_ERR_CALLBACK_FAILURE;
+  }
+
+  return 0;
+}
+
 static int
 conn_call_update_key(ngtcp2_conn *conn, uint8_t *rx_secret, uint8_t *tx_secret,
                      ngtcp2_crypto_aead_ctx *rx_aead_ctx, uint8_t *rx_iv,
@@ -8278,6 +8305,21 @@ static int conn_recv_datagram(ngtcp2_conn *conn, ngtcp2_datagram *fr) {
 }
 
 /*
+ * conn_recv_additional_addresses processes the incoming ADDITIONAL_ADDRESS frame |fr|.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * NGTCP2_ERR_CALLBACK_FAILURE
+ *     User-defined callback function failed.
+ */
+static int conn_recv_additional_addresses(ngtcp2_conn *conn, ngtcp2_additional_addresses *fr) {
+  assert(conn->local.transport_params.max_datagram_frame_size);
+
+  return conn_call_recv_additional_addresses(conn, fr);
+}
+
+/*
  * conn_key_phase_changed returns nonzero if |hd| indicates that the
  * key phase has unexpected value.
  */
@@ -9373,6 +9415,13 @@ static ngtcp2_ssize conn_recv_pkt(ngtcp2_conn *conn, const ngtcp2_path *path,
         return NGTCP2_ERR_PROTO;
       }
       rv = conn_recv_datagram(conn, &fr->datagram);
+      if (rv != 0) {
+        return rv;
+      }
+      non_probing_pkt = 1;
+      break;
+    case NGTCP2_FRAME_ADDITIONAL_ADDRESSES:
+      rv = conn_recv_additional_addresses(conn, &fr->additional_addresses);
       if (rv != 0) {
         return rv;
       }

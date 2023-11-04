@@ -107,6 +107,10 @@
    that this library can write. */
 #define NGTCP2_HARD_MAX_UDP_PAYLOAD_SIZE ((1 << 24) - 1)
 
+/* NGTCP2_MAX_ADDITIONAL_ADDRESSES is the maximum amount of additional
+   addresses that this library can accept. */
+#define NGTCP2_MAX_ADDITIONAL_ADDRESSES 16 /* XXX: I am not sure that dest is large enough in decode. */
+
 /* NGTCP2_PKT_LENGTHLEN is the number of bytes that is occupied by
    Length field in Long packet header. */
 #define NGTCP2_PKT_LENGTHLEN 4
@@ -342,14 +346,12 @@ typedef struct ngtcp2_additional_addresses {
   uint8_t type;
   uint64_t seq;
   /* datacnt is the number of elements that data contains. */
-  size_t datacnt;
-  /* data is a pointer to ngtcp2_vec array that stores data. */
-  ngtcp2_vec *data;
-  /* rdata is conveniently embedded to ngtcp2_additional_addresses, so that data
-     field can just point to the address of this field to store a
-     single vector which is the case when ADDITIONAL_ADDRESSES is received from a
-     remote endpoint. */
-  ngtcp2_vec rdata[1];
+  size_t addrcnt;
+  /* addrs is a ngtcp2_sockaddr array of size addrcnt that contains
+     additional addresses.  Although the length of data is 1 in this
+     definition, the library may allocate extra bytes to hold more
+     elements. */
+  ngtcp2_sockaddr addrs[1];
 } ngtcp2_additional_addresses;
 
 typedef union ngtcp2_frame {

@@ -689,7 +689,9 @@ static uint8_t *write_additional_addresses_frame(uint8_t *p, const ngtcp2_additi
 #define NGTCP2_QLOG_ADDITIONAL_ADDRESSES_FRAME_OVERHEAD 54 /* XXX */
 
   p = write_verbatim(p, "{\"frame_type\":\"additional_addresses\",");
-  p = write_pair_number(p, "length", ngtcp2_vec_len(fr->data, fr->datacnt));
+/* XXX
+  p = write_pair_number(p, "length", ngtcp2_vec_len(fr->addrs, fr->addrcnt));
+*/
 /* XXX */
   *p++ = '}';
 
