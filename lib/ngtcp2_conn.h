@@ -557,6 +557,9 @@ struct ngtcp2_conn {
          accept. */
       uint64_t max_streams;
     } uni;
+      /* additional_addresses_seq is the sequence number of the last
+         received Additional Addresses frame. */
+    uint64_t additional_addresses_seq;
   } remote;
 
   struct {

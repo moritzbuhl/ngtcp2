@@ -602,9 +602,11 @@ static int conn_call_recv_additional_addresses(ngtcp2_conn *conn,
   size_t addrcnt;
   int rv;
 
-  if (!conn->callbacks.recv_additional_addresses) {
+  if (!conn->callbacks.recv_additional_addresses ||
+      fr->seq < conn->remote.additional_addresses_seq) {
     return 0;
   }
+  conn->remote.additional_addresses_seq = fr->seq;
 
   if (fr->addrcnt) {
     addrs = fr->addrs;
@@ -8314,8 +8316,6 @@ static int conn_recv_datagram(ngtcp2_conn *conn, ngtcp2_datagram *fr) {
  *     User-defined callback function failed.
  */
 static int conn_recv_additional_addresses(ngtcp2_conn *conn, ngtcp2_additional_addresses *fr) {
-  assert(conn->local.transport_params.max_datagram_frame_size);
-
   return conn_call_recv_additional_addresses(conn, fr);
 }
 
