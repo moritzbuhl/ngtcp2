@@ -1691,6 +1691,9 @@ typedef enum ngtcp2_token_type {
 #define NGTCP2_SETTINGS_V1 1
 #define NGTCP2_SETTINGS_VERSION NGTCP2_SETTINGS_V1
 
+struct ngtcp2_addr;
+typedef struct ngtcp2_addr ngtcp2_addr;
+
 /**
  * @struct
  *
@@ -1877,6 +1880,12 @@ typedef struct ngtcp2_settings {
    * number space.  It must be in range [0, INT32_MAX], inclusive.
    */
   uint32_t initial_pkt_num;
+  /**
+   * :member:`additional_addresses` is a list of additional addresses
+   * of the server.  The list must end with a NULL element.  Client
+   * does not use this field.
+   */
+  ngtcp2_addr **additional_addresses;
 } ngtcp2_settings;
 
 /**

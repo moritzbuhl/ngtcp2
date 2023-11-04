@@ -681,6 +681,21 @@ static uint8_t *write_datagram_frame(uint8_t *p, const ngtcp2_datagram *fr) {
   return p;
 }
 
+static uint8_t *write_additional_addresses_frame(uint8_t *p, const ngtcp2_additional_addresses *fr) {
+/* XXX*/
+  /*
+   * {"frame_type":"datagram","length":0000000000000000000}
+   */
+#define NGTCP2_QLOG_ADDITIONAL_ADDRESSES_FRAME_OVERHEAD 54 /* XXX */
+
+  p = write_verbatim(p, "{\"frame_type\":\"additional_addresses\",");
+  p = write_pair_number(p, "length", ngtcp2_vec_len(fr->data, fr->datacnt));
+/* XXX */
+  *p++ = '}';
+
+  return p;
+}
+
 static uint8_t *qlog_write_time(ngtcp2_qlog *qlog, uint8_t *p) {
   return write_pair_tstamp(p, "time", qlog->last_ts - qlog->ts);
 }
@@ -905,6 +920,15 @@ void ngtcp2_qlog_write_frame(ngtcp2_qlog *qlog, const ngtcp2_frame *fr) {
       return;
     }
     p = write_datagram_frame(p, &fr->datagram);
+    break;
+  case NGTCP2_FRAME_ADDITIONAL_ADDRESSES:
+/* XXX*/
+/*
+    if (ngtcp2_buf_left(&qlog->buf) < NGTCP2_QLOG_STREAM_FRAME_OVERHEAD + 1) {
+      return;
+    }
+*/
+    p = write_additional_addresses_frame(p, &fr->additional_addresses);
     break;
   default:
     ngtcp2_unreachable();
