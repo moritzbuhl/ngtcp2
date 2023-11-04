@@ -422,6 +422,11 @@ ngtcp2_ssize ngtcp2_transport_params_encode_versioned(
     }
   }
 
+  if (params->additional_addresses) {
+    p = ngtcp2_put_uvarint(p, NGTCP2_TRANSPORT_PARAM_ADDITIONAL_ADDRESSES);
+    p = ngtcp2_put_uvarint(p, 0);
+  }
+
   assert((size_t)(p - dest) == len);
 
   return (ngtcp2_ssize)len;
@@ -564,6 +569,7 @@ int ngtcp2_transport_params_decode_versioned(int transport_params_version,
   memset(&params->initial_scid, 0, sizeof(params->initial_scid));
   memset(&params->original_dcid, 0, sizeof(params->original_dcid));
   params->version_info_present = 0;
+  params->additional_addresses = 0;
 
   p = data;
   end = data + datalen;

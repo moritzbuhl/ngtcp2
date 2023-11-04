@@ -468,6 +468,13 @@ static void log_fr_datagram(ngtcp2_log *log, const ngtcp2_pkt_hd *hd,
                   ngtcp2_vec_len(fr->data, fr->datacnt));
 }
 
+static void log_fr_additional_addresses(ngtcp2_log *log, const ngtcp2_pkt_hd *hd,
+                            const ngtcp2_additional_addresses *fr, const char *dir) {
+  log->log_printf(log->user_data,
+                  (NGTCP2_LOG_PKT " ADDITIONAL_ADDRESSES(0x%02x)"),
+                  NGTCP2_LOG_FRM_HD_FIELDS(dir), fr->type);
+}
+
 static void log_fr(ngtcp2_log *log, const ngtcp2_pkt_hd *hd,
                    const ngtcp2_frame *fr, const char *dir) {
   switch (fr->type) {
@@ -538,6 +545,9 @@ static void log_fr(ngtcp2_log *log, const ngtcp2_pkt_hd *hd,
   case NGTCP2_FRAME_DATAGRAM:
   case NGTCP2_FRAME_DATAGRAM_LEN:
     log_fr_datagram(log, hd, &fr->datagram, dir);
+    break;
+  case NGTCP2_FRAME_ADDITIONAL_ADDRESSES:
+    log_fr_additional_addresses(log, hd, &fr->additional_addresses, dir);
     break;
   default:
     ngtcp2_unreachable();

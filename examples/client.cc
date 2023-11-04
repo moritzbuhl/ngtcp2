@@ -432,6 +432,10 @@ int stream_reset(ngtcp2_conn *conn, int64_t stream_id, uint64_t final_size,
 } // namespace
 
 namespace {
+int recv_aa(ngtcp2_conn *conn, const ngtcp2_sockaddr *addrs, size_t addrcnt, void *user_data) {
+printf("callback call!\n");
+  return 0;
+}
 int stream_stop_sending(ngtcp2_conn *conn, int64_t stream_id,
                         uint64_t app_error_code, void *user_data,
                         void *stream_user_data) {
@@ -688,6 +692,7 @@ int Client::init(int fd, const Address &local_addr, const Address &remote_addr,
       nullptr, // recv_datagram
       nullptr, // ack_datagram
       nullptr, // lost_datagram
+      recv_aa, // recv_additional_addresses
       ngtcp2_crypto_get_path_challenge_data_cb,
       stream_stop_sending,
       ngtcp2_crypto_version_negotiation_cb,
@@ -794,6 +799,7 @@ int Client::init(int fd, const Address &local_addr, const Address &remote_addr,
   params.max_idle_timeout = config.timeout;
   params.active_connection_id_limit = 7;
   params.grease_quic_bit = 1;
+  params.additional_addresses = 1;
 
   auto path = ngtcp2_path{
       {
