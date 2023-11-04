@@ -1544,6 +1544,11 @@ typedef struct ngtcp2_transport_params {
    * this field.
    */
   uint8_t version_info_present;
+  /**
+   * :member:`additional_addresses` is nonzero if sender supports the
+   * "Additional Addresses" extension.  See :rfc:`draft-piraux-quic-additional-addresses-01`.
+   */
+  uint8_t additional_addresses;
 } ngtcp2_transport_params;
 
 #define NGTCP2_CONN_INFO_V1 1

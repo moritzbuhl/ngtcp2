@@ -66,6 +66,8 @@ typedef enum ngtcp2_transport_param_id {
   NGTCP2_TRANSPORT_PARAM_GREASE_QUIC_BIT = 0x2ab2,
   /* https://datatracker.ietf.org/doc/html/rfc9368 */
   NGTCP2_TRANSPORT_PARAM_VERSION_INFORMATION = 0x11,
+  /* https://www.ietf.org/archive/id/draft-piraux-quic-additional-addresses-01.html */
+  NGTCP2_TRANSPORT_PARAM_ADDITIONAL_ADDRESSES = 0x925adda01,
 } ngtcp2_transport_param_id;
 
 /* NGTCP2_CRYPTO_KM_FLAG_NONE indicates that no flag is set. */

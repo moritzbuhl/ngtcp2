@@ -267,6 +267,10 @@ ngtcp2_ssize ngtcp2_transport_params_encode_versioned(
     len += ngtcp2_put_uvarintlen(NGTCP2_TRANSPORT_PARAM_VERSION_INFORMATION) +
            ngtcp2_put_uvarintlen(version_infolen) + version_infolen;
   }
+  if (params->additional_addresses) {
+    len += ngtcp2_put_uvarintlen(NGTCP2_TRANSPORT_PARAM_ADDITIONAL_ADDRESSES) +
+           ngtcp2_put_uvarintlen(0);
+  }
 
   if (dest == NULL && destlen == 0) {
     return (ngtcp2_ssize)len;
@@ -787,6 +791,14 @@ int ngtcp2_transport_params_decode_versioned(int transport_params_version,
       }
       params->version_info_present = 1;
       break;
+    case NGTCP2_TRANSPORT_PARAM_ADDITIONAL_ADDRESSES:
+      if (decode_varint(&valuelen, &p, end) != 0) {
+        return NGTCP2_ERR_MALFORMED_TRANSPORT_PARAM;
+      }
+      if (valuelen != 0) {
+        return NGTCP2_ERR_MALFORMED_TRANSPORT_PARAM;
+      }
+      params->additional_addresses = 1;
     default:
       /* Ignore unknown parameter */
       if (decode_varint(&valuelen, &p, end) != 0) {
