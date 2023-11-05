@@ -1571,6 +1571,7 @@ ngtcp2_ssize ngtcp2_pkt_decode_additional_addresses_frame(ngtcp2_additional_addr
 
   assert((size_t)(p - payload) == len);
 
+  len += 7; /*  XXX: type is longer than one byte */
   return (ngtcp2_ssize)len;
 }
 
