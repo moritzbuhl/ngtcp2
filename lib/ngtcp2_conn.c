@@ -3047,6 +3047,48 @@ static int conn_enqueue_new_connection_id(ngtcp2_conn *conn) {
 }
 
 /*
+ * conn_enqueue_additional_addresses prepares to send additional
+ * addresses to the remote endpoint.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * NGTCP2_ERR_NOMEM
+ *     Out of memory.
+ */
+static int conn_enqueue_additional_addresses(ngtcp2_conn *conn) {
+  size_t i = 0, addrcnt;
+  int rv;
+  ngtcp2_frame_chain *nfrc;
+  ngtcp2_pktns *pktns = &conn->pktns;
+  ngtcp2_addr *addr;
+  ngtcp2_sockaddr *sockaddr;
+
+  if (!conn->local.settings.additional_addresses) {
+    return 0;
+  }
+
+  rv = ngtcp2_frame_chain_objalloc_new(&nfrc, &conn->frc_objalloc);
+  if (rv != 0) {
+    return rv;
+  }
+
+  for (addr = *conn->local.settings.additional_addresses; addr != NULL;
+       i++, addr++) {
+    memcpy(&nfrc->fr.additional_addresses.addrs[i], addr->addr, addr->addrlen);
+  }
+  addrcnt = i;
+
+  nfrc->fr.type = NGTCP2_FRAME_ADDITIONAL_ADDRESSES;
+  nfrc->fr.additional_addresses.seq = ++conn->scid.last_seq;
+  nfrc->fr.additional_addresses.addrcnt = addrcnt;
+  nfrc->next = pktns->tx.frq;
+  pktns->tx.frq = nfrc;
+
+  return 0;
+}
+
+/*
  * conn_remove_retired_connection_id removes the already retired
  * connection ID.  It waits PTO before actually removing a connection
  * ID after it receives RETIRE_CONNECTION_ID from peer to catch
@@ -3289,6 +3331,13 @@ static ngtcp2_ssize conn_write_pkt(ngtcp2_conn *conn, ngtcp2_pkt_info *pi,
          parameters here.  */
       if (conn->oscid.datalen &&
           (conn->server || conn_is_tls_handshake_completed(conn))) {
+        rv = conn_enqueue_new_connection_id(conn);
+        if (rv != 0) {
+          return rv;
+        }
+      }
+      if (conn->oscid.datalen && conn->server &&
+          conn->remote.transport_params->additional_addresses) {
         rv = conn_enqueue_new_connection_id(conn);
         if (rv != 0) {
           return rv;
