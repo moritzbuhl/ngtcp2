@@ -8307,15 +8307,22 @@ static int conn_recv_datagram(ngtcp2_conn *conn, ngtcp2_datagram *fr) {
 }
 
 /*
- * conn_recv_additional_addresses processes the incoming ADDITIONAL_ADDRESS frame |fr|.
+ * conn_recv_additional_addresses processes the incoming ADDITIONAL_ADDRESSES frame |fr|.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
  * NGTCP2_ERR_CALLBACK_FAILURE
  *     User-defined callback function failed.
+ * NGTCP2_ERR_PROTO
+ *     Server received ADDITIONAL_ADDRESSES frame.
  */
-static int conn_recv_additional_addresses(ngtcp2_conn *conn, ngtcp2_additional_addresses *fr) {
+static int conn_recv_additional_addresses(ngtcp2_conn *conn,
+                                          ngtcp2_additional_addresses *fr) {
+  if (conn->server) {
+    return NGTCP2_ERR_PROTO;
+  }
+
   return conn_call_recv_additional_addresses(conn, fr);
 }
 
