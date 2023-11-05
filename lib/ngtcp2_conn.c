@@ -3062,7 +3062,6 @@ static int conn_enqueue_additional_addresses(ngtcp2_conn *conn) {
   ngtcp2_frame_chain *nfrc;
   ngtcp2_pktns *pktns = &conn->pktns;
   ngtcp2_addr *addr;
-  ngtcp2_sockaddr *sockaddr;
 
   if (!conn->local.settings.additional_addresses) {
     return 0;
@@ -3338,7 +3337,7 @@ static ngtcp2_ssize conn_write_pkt(ngtcp2_conn *conn, ngtcp2_pkt_info *pi,
       }
       if (conn->oscid.datalen && conn->server &&
           conn->remote.transport_params->additional_addresses) {
-        rv = conn_enqueue_new_connection_id(conn);
+        rv = conn_enqueue_additional_addresses(conn);
         if (rv != 0) {
           return rv;
         }
