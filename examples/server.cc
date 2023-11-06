@@ -1434,6 +1434,7 @@ int Handler::init(const Endpoint &ep, const Address &local_addr,
       nullptr, // recv_datagram
       nullptr, // ack_datagram
       nullptr, // lost_datagram
+      nullptr, // additional_addresses
       ngtcp2_crypto_get_path_challenge_data_cb,
       stream_stop_sending,
       ngtcp2_crypto_version_negotiation_cb,
@@ -1465,6 +1466,28 @@ int Handler::init(const Endpoint &ep, const Address &local_addr,
     settings.max_tx_udp_payload_size = config.max_udp_payload_size;
     settings.no_tx_udp_payload_size_shaping = 1;
   }
+
+  ngtcp2_sockaddr_in *in;
+  ngtcp2_addr *p = new ngtcp2_addr;
+  p->addr = new ngtcp2_sockaddr;
+  in = (ngtcp2_sockaddr_in *)p->addr;
+  in->sin_family = NGTCP2_AF_INET;
+  in->sin_port = 23313;
+  in->sin_addr.s_addr = 16777343;
+  ngtcp2_addr *q = new ngtcp2_addr;
+  q->addr = new ngtcp2_sockaddr;
+  in = (ngtcp2_sockaddr_in *) q->addr;
+  in->sin_family = NGTCP2_AF_INET;
+  in->sin_port = 23313;
+  in->sin_addr.s_addr = 1661053120;
+  settings.additional_addresses = (ngtcp2_addr **)malloc(sizeof(ngtcp2_addr *) * 3);
+  if (settings.additional_addresses == NULL) {
+    return -1;
+  }
+  settings.additional_addresses[0] = p;
+  settings.additional_addresses[1] = q;
+  settings.additional_addresses[2] = NULL;
+
   if (!config.qlog_dir.empty()) {
     auto path = std::string{config.qlog_dir};
     path += '/';

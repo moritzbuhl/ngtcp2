@@ -738,6 +738,8 @@ void ngtcp2_log_remote_tp(ngtcp2_log *log,
                   NGTCP2_LOG_TP_HD_FIELDS, params->max_datagram_frame_size);
   log->log_printf(log->user_data, (NGTCP2_LOG_TP " grease_quic_bit=%d"),
                   NGTCP2_LOG_TP_HD_FIELDS, params->grease_quic_bit);
+  log->log_printf(log->user_data, (NGTCP2_LOG_TP " additional_addresses=%d"),
+                  NGTCP2_LOG_TP_HD_FIELDS, params->additional_addresses);
 
   if (params->version_info_present) {
     log->log_printf(

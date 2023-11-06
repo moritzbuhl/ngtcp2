@@ -805,6 +805,7 @@ int ngtcp2_transport_params_decode_versioned(int transport_params_version,
         return NGTCP2_ERR_MALFORMED_TRANSPORT_PARAM;
       }
       params->additional_addresses = 1;
+      break;
     default:
       /* Ignore unknown parameter */
       if (decode_varint(&valuelen, &p, end) != 0) {
