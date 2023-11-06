@@ -2190,6 +2190,7 @@ ngtcp2_ssize ngtcp2_pkt_encode_additional_addresses_frame(uint8_t *out, size_t o
   p = ngtcp2_put_uvarint(p, fr->seq);
   p = ngtcp2_put_uvarint(p, fr->addrcnt);
 
+  /* XXX: shouldn't this also be limited by NGTCP2_MAX_ADDITIONAL_ADDRESSES? */
   for (i = 0; i < fr->addrcnt; ++i) {
     switch(fr->addrs[i].sa_family) {
     case AF_INET:
