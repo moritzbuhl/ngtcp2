@@ -176,6 +176,7 @@ typedef enum {
   NGTCP2_FRAME_DATAGRAM = 0x30,
   NGTCP2_FRAME_DATAGRAM_LEN = 0x31,
   NGTCP2_FRAME_ADDITIONAL_ADDRESSES = 0xaa,
+#define NGTCP2_FRAME_ADDITIONAL_ADDRESSES_DRAFT (0x0925adda01ULL)
 } ngtcp2_frame_type;
 
 /* ngtcp2_stream represents STREAM and CRYPTO frames. */

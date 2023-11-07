@@ -538,13 +538,20 @@ ngtcp2_ssize ngtcp2_pkt_decode_frame(ngtcp2_frame *dest, const uint8_t *payload,
   case NGTCP2_FRAME_DATAGRAM_LEN:
     return ngtcp2_pkt_decode_datagram_frame(&dest->datagram, payload,
                                             payloadlen);
-  case 0xc0: /*  XXX: type is longer than one byte */
   case NGTCP2_FRAME_ADDITIONAL_ADDRESSES:
     return ngtcp2_pkt_decode_additional_addresses_frame(&dest->additional_addresses, payload,
                                                         payloadlen);
   default:
     if ((type & ~(NGTCP2_FRAME_STREAM - 1)) == NGTCP2_FRAME_STREAM) {
       return ngtcp2_pkt_decode_stream_frame(&dest->stream, payload, payloadlen);
+    }
+    if ((type & 0xc0) && ngtcp2_get_uvarintlen(payload) < payloadlen) {
+      uint64_t uvartype;
+      (void)ngtcp2_get_uvarint(&uvartype, payload);
+      if (uvartype == NGTCP2_FRAME_ADDITIONAL_ADDRESSES_DRAFT) {
+        return ngtcp2_pkt_decode_additional_addresses_frame(&dest->additional_addresses, payload,
+                                                            payloadlen);
+      }
     }
     return NGTCP2_ERR_FRAME_ENCODING;
   }
@@ -1467,7 +1474,7 @@ ngtcp2_ssize ngtcp2_pkt_decode_datagram_frame(ngtcp2_datagram *dest,
 ngtcp2_ssize ngtcp2_pkt_decode_additional_addresses_frame(ngtcp2_additional_addresses *dest,
                                                           const uint8_t *payload,
                                                           size_t payloadlen) {
-  size_t len = 1;
+  size_t len = ngtcp2_get_uvarintlen(payload) + 1;
   const uint8_t *p;
   size_t naddrcnt, addrcnt, max_addrcnt;
   size_t n, i;
@@ -1475,13 +1482,12 @@ ngtcp2_ssize ngtcp2_pkt_decode_additional_addresses_frame(ngtcp2_additional_addr
   ngtcp2_sockaddr_in *in;
   ngtcp2_sockaddr_in6 *in6;
   uint8_t av, addrlen;
-  payload += 7; /*  XXX: type is longer than one byte */
 
   if (payloadlen < len) {
     return NGTCP2_ERR_FRAME_ENCODING;
   }
 
-  p = payload + 1;
+  p = payload + len - 1;
 
   n = ngtcp2_get_uvarintlen(p);
   len += n;
@@ -1493,7 +1499,7 @@ ngtcp2_ssize ngtcp2_pkt_decode_additional_addresses_frame(ngtcp2_additional_addr
 
   /* Additional Addresses Count */
   naddrcnt = ngtcp2_get_uvarintlen(p);
-  len += naddrcnt;
+  len += naddrcnt - 1;
 
   if (payloadlen < len) {
     return NGTCP2_ERR_FRAME_ENCODING;
@@ -1503,7 +1509,6 @@ ngtcp2_ssize ngtcp2_pkt_decode_additional_addresses_frame(ngtcp2_additional_addr
   if (vi > SIZE_MAX / (1 + 4 + 2) || payloadlen - len < vi * (1 + 4 + 2)) {
     return NGTCP2_ERR_FRAME_ENCODING;
   }
-
   addrcnt = (size_t)vi;
 
   for (i = 0; i < addrcnt; ++i) {
@@ -1537,7 +1542,7 @@ ngtcp2_ssize ngtcp2_pkt_decode_additional_addresses_frame(ngtcp2_additional_addr
 
   max_addrcnt = ngtcp2_min(NGTCP2_HARD_MAX_UDP_PAYLOAD_SIZE, addrcnt);
 
-  p = payload + 1;
+  p = payload + ngtcp2_get_uvarintlen(payload);
 
   dest->type = NGTCP2_FRAME_ADDITIONAL_ADDRESSES;
   p = ngtcp2_get_uvarint(&dest->seq, p);
@@ -1565,13 +1570,12 @@ ngtcp2_ssize ngtcp2_pkt_decode_additional_addresses_frame(ngtcp2_additional_addr
       p = ngtcp2_get_uint16(&in6->sin6_port, p);
       break;
     default:
-      return NGTCP2_ERR_FRAME_ENCODING;
+      ngtcp2_unreachable();
     }
   }
 
   assert((size_t)(p - payload) == len);
 
-  len += 7; /*  XXX: type is longer than one byte */
   return (ngtcp2_ssize)len;
 }
 
@@ -2169,7 +2173,8 @@ ngtcp2_ssize ngtcp2_pkt_encode_datagram_frame(uint8_t *out, size_t outlen,
 ngtcp2_ssize ngtcp2_pkt_encode_additional_addresses_frame(uint8_t *out, size_t outlen,
                                                           const ngtcp2_additional_addresses *fr) {
   uint64_t len =
-      1 +
+      /* XXX: 1 + */
+      ngtcp2_put_uvarintlen(NGTCP2_FRAME_ADDITIONAL_ADDRESSES_DRAFT) +
       ngtcp2_put_uvarintlen(fr->seq) +
       ngtcp2_put_uvarintlen(fr->addrcnt);
   uint8_t *p;
@@ -2186,7 +2191,8 @@ ngtcp2_ssize ngtcp2_pkt_encode_additional_addresses_frame(uint8_t *out, size_t o
 
   p = out;
 
-  *p++ = NGTCP2_FRAME_ADDITIONAL_ADDRESSES;
+  /* XXX: *p++ = NGTCP2_FRAME_ADDITIONAL_ADDRESSES; */
+  p = ngtcp2_put_uvarint(p, NGTCP2_FRAME_ADDITIONAL_ADDRESSES_DRAFT);
   p = ngtcp2_put_uvarint(p, fr->seq);
   p = ngtcp2_put_uvarint(p, fr->addrcnt);
 
@@ -2211,7 +2217,7 @@ ngtcp2_ssize ngtcp2_pkt_encode_additional_addresses_frame(uint8_t *out, size_t o
       ngtcp2_unreachable();
     }
 
-    len += 1 + addrlen + 2;
+    len += 1ULL + addrlen + 2;
     if (outlen < len) {
       return NGTCP2_ERR_NOBUF;
     }

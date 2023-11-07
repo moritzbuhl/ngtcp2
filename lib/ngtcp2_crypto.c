@@ -268,7 +268,7 @@ ngtcp2_ssize ngtcp2_transport_params_encode_versioned(
            ngtcp2_put_uvarintlen(version_infolen) + version_infolen;
   }
   if (params->additional_addresses) {
-    len += ngtcp2_put_uvarintlen(NGTCP2_TRANSPORT_PARAM_ADDITIONAL_ADDRESSES) +
+    len += ngtcp2_put_uvarintlen(NGTCP2_TRANSPORT_PARAM_ADDITIONAL_ADDRESSES_DRAFT) +
            ngtcp2_put_uvarintlen(0);
   }
 
@@ -423,7 +423,7 @@ ngtcp2_ssize ngtcp2_transport_params_encode_versioned(
   }
 
   if (params->additional_addresses) {
-    p = ngtcp2_put_uvarint(p, NGTCP2_TRANSPORT_PARAM_ADDITIONAL_ADDRESSES);
+    p = ngtcp2_put_uvarint(p, NGTCP2_TRANSPORT_PARAM_ADDITIONAL_ADDRESSES_DRAFT);
     p = ngtcp2_put_uvarint(p, 0);
   }
 
@@ -797,7 +797,7 @@ int ngtcp2_transport_params_decode_versioned(int transport_params_version,
       }
       params->version_info_present = 1;
       break;
-    case NGTCP2_TRANSPORT_PARAM_ADDITIONAL_ADDRESSES:
+    case NGTCP2_TRANSPORT_PARAM_ADDITIONAL_ADDRESSES_DRAFT:
       if (decode_varint(&valuelen, &p, end) != 0) {
         return NGTCP2_ERR_MALFORMED_TRANSPORT_PARAM;
       }
