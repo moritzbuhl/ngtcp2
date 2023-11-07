@@ -559,7 +559,10 @@ struct ngtcp2_conn {
     } uni;
       /* additional_addresses_seq is the sequence number of the last
          received Additional Addresses frame. */
-    uint64_t additional_addresses_seq;
+    union {
+      uint64_t additional_addresses_seq;
+      int additional_addresses_communicated;
+    };
   } remote;
 
   struct {

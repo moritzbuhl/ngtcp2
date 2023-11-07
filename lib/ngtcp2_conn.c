@@ -3335,9 +3335,10 @@ static ngtcp2_ssize conn_write_pkt(ngtcp2_conn *conn, ngtcp2_pkt_info *pi,
           return rv;
         }
       }
-      if (conn->oscid.datalen && conn->server &&
+      if (conn->server && !conn->remote.additional_addresses_communicated &&
           conn->remote.transport_params->additional_addresses) {
         rv = conn_enqueue_additional_addresses(conn);
+        conn->remote.additional_addresses_communicated = 1;
         if (rv != 0) {
           return rv;
         }
